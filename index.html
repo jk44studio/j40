@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J40's Lanzarote</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="J40's birthday weekend in Lanzarote, 11–13 December 2026. RSVP with your name, email and photo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap">
+<style>
+/* Layout: a watercolour invitation card. Poster beside the programme, then RSVP desk beside the guest wall. Single paper look by choice. */
+:root {
+  --paper: #fbf4e6;
+  --card: #fffaf0;
+  --ink: #17503f;
+  --ink-soft: #4f6f63;
+  --line: #d9cdb4;
+  --coral: #e5603d;
+  --sea: #2795a8;
+  --sun: #eea43c;
+  --rose: #df6f8d;
+  --danger: #b8361c;
+  --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body: "Karla", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; position: relative; overflow-x: hidden; }
+.wash { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.wash i { position: absolute; border-radius: 50%; filter: blur(38px); opacity: .32; }
+.wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.frame { border: 2px solid var(--ink); outline: 1px solid var(--ink); outline-offset: 5px; border-radius: 2px; margin-block: 22px; padding-block: 8px; }
+h1, h2, h3 { margin: 0; font-weight: 400; text-wrap: balance; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Invitation */
+.invite { display: grid; justify-items: center; padding: 24px clamp(12px, 3vw, 32px) 12px; }
+.invite img { width: min(440px, 100%); max-width: 100%; display: block; border-radius: 3px; box-shadow: 0 10px 30px rgba(23, 80, 63, .18); transform: rotate(-1.2deg); }
+
+/* Game */
+.game { display: grid; gap: 12px; padding: 20px clamp(12px, 3vw, 32px) 28px; }
+.game-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 24px; }
+.game-head > div:first-child { display: grid; gap: 4px; max-width: 60ch; min-width: 0; }
+.game h2 { font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 1.05; letter-spacing: -.015em; }
+.game-head p { margin: 0; color: var(--ink-soft); }
+.hud { display: flex; gap: 18px; align-items: baseline; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.hud b { font-family: var(--display); font-weight: 800; font-size: 34px; color: var(--coral); }
+.bar { height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--sea), var(--sun), var(--coral)); transition: width .3s; }
+.stage { position: relative; border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; background: #f3dcae; }
+.stage canvas { display: block; width: 100%; max-width: 100%; aspect-ratio: 4 / 3; height: auto; }
+.stage.playing canvas { touch-action: none; cursor: crosshair; }
+.overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; padding: 16px; background: rgba(251, 244, 230, .8); }
+.overlay strong { font-family: var(--display); font-weight: 800; font-size: clamp(24px, 5vw, 42px); line-height: 1.05; }
+.overlay p { margin: 0; max-width: 40ch; color: var(--ink-soft); font-size: 15px; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 16px; font-size: 14px; color: var(--ink-soft); }
+.legend li { display: grid; gap: 2px; border-top: 4px solid var(--c); padding-top: 6px; min-width: 0; }
+.legend b { color: var(--ink); }
+.end { background: var(--card); border: 2px solid var(--ink); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.end strong { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.1; }
+.end p { margin: 0; color: var(--ink-soft); }
+
+/* Main */
+main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; padding: 12px clamp(12px, 3vw, 32px) 40px; align-items: start; }
+@media (max-width: 820px) { main { grid-template-columns: 1fr; } .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.desk { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 24px; display: grid; gap: 18px; box-shadow: 0 6px 22px rgba(23, 80, 63, .08); }
+.desk h2, .house h2 { font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 1.05; letter-spacing: -.015em; }
+.desk p { margin: 0; color: var(--ink-soft); }
+form { display: grid; gap: 16px; }
+.field { display: grid; gap: 6px; }
+.field > label { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+input[type=text], input[type=email] { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; width: 100%; }
+input::placeholder { color: #9aa79f; }
+input[type=text]:focus-visible, input[type=email]:focus-visible, button:focus-visible, .photo-pick:focus-within { outline: 2px solid var(--sea); outline-offset: 2px; }
+.hint { color: var(--ink-soft); font-size: 13px; line-height: 1.4; }
+.photo-row { display: flex; align-items: center; gap: 14px; }
+.photo-pick { width: 88px; height: 88px; border-radius: 50%; border: 2px dashed var(--sea); display: grid; place-items: center; overflow: hidden; cursor: pointer; flex: none; background: var(--paper); position: relative; }
+.photo-pick img { width: 100%; height: 100%; object-fit: cover; }
+.photo-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-pick .plus { font-size: 13px; font-weight: 700; color: var(--sea); text-align: center; line-height: 1; }
+.btn { font: 700 16px var(--body); letter-spacing: .03em; border: 0; border-radius: 999px; padding: 14px 20px; cursor: pointer; background: var(--coral); color: #fff; }
+.btn:hover { filter: brightness(1.06); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.btn.ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); font-size: 14px; padding: 10px 14px; }
+.btn.ghost:hover { color: var(--ink); border-color: var(--ink-soft); }
+.btn.danger { background: var(--danger); font-size: 14px; padding: 10px 14px; }
+.msg { font-size: 14px; color: var(--sea); min-height: 1.5em; margin: 0; }
+.msg.err { color: var(--danger); }
+
+/* Pass */
+.pass { border-radius: 8px; overflow: hidden; border: 2px solid var(--ink); background: var(--card); }
+.pass .top { background: linear-gradient(110deg, var(--sea), #5bb8b0 45%, var(--sun) 80%, var(--coral)); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pass .top span:first-child { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1; }
+.pass .top span:last-child { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.pass .body { padding: 16px; display: flex; gap: 14px; align-items: center; }
+.pass .body img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: none; border: 3px solid var(--sun); }
+.pass .body div { min-width: 0; display: grid; gap: 2px; }
+.pass strong { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
+.pass small { color: var(--ink-soft); font-size: 13px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* Guest wall */
+.house { display: grid; gap: 18px; min-width: 0; }
+.house-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px; }
+.count { font-weight: 700; font-size: 15px; color: var(--ink-soft); }
+.count b { font-family: var(--display); font-weight: 800; font-size: 40px; color: var(--coral); font-variant-numeric: tabular-nums; }
+.guests { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 20px 12px; }
+.guests li { display: grid; justify-items: center; gap: 6px; text-align: center; min-width: 0; }
+.guests img, .guests .noimg { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; border: 3px solid var(--ring, var(--sea)); background: var(--card); }
+.guests li:nth-child(4n+2) { --ring: var(--coral); }
+.guests li:nth-child(4n+3) { --ring: var(--sun); }
+.guests li:nth-child(4n+4) { --ring: var(--rose); }
+.guests li.me img { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--ink); }
+.guests .noimg { display: grid; place-items: center; font-weight: 700; color: var(--ink-soft); }
+.guests .nm { font-size: 14px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.empty { border: 2px dashed var(--line); border-radius: 6px; padding: 28px 20px; color: var(--ink-soft); text-align: center; }
+footer { border-top: 1px solid var(--line); margin: 0 clamp(12px, 3vw, 32px); padding-block: 16px 20px; display: flex; flex-wrap: wrap; gap: 6px 20px; justify-content: space-between; color: var(--ink-soft); font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) {
+  .pass { animation: rise .5s ease-out; }
+  @keyframes rise { from { transform: translateY(8px) rotate(-1deg); } to { transform: none; } }
+}
+</style>
+</head>
+<body>
+
+<div class="wash" aria-hidden="true">
+  <i style="width:420px;height:300px;left:-120px;top:20px;background:var(--rose)"></i>
+  <i style="width:380px;height:260px;right:-100px;top:60px;background:var(--sea)"></i>
+  <i style="width:360px;height:240px;left:-80px;top:780px;background:var(--sun)"></i>
+  <i style="width:420px;height:280px;right:-140px;top:1100px;background:var(--coral)"></i>
+  <i style="width:500px;height:260px;left:20%;bottom:-120px;background:var(--sea)"></i>
+</div>
+
+<div class="wrap">
+ <div class="frame">
+  <h1 class="sr">J40's · Lanzarote · 11–13 diciembre 2026</h1>
+
+  <section class="invite" aria-label="Invitation">
+    <img src="poster.jpg" alt="J40's invitation: Lanzarote, 11 to 13 December 2026. Friday 11, 20:30 dinner at La Lapa. Saturday 12, 9:30 to 13:00 Party Wave surf class, then from 14:00 a pool party with mandatory wigs and sunnies. Sunday 13, 10:00 Spidifen beach walk and brunch.">
+  </section>
+
+  <section class="game" aria-labelledby="game-h">
+    <div class="game-head">
+      <div>
+        <h2 id="game-h">Rescate en Famara</h2>
+        <p>Friends are in trouble all over Famara beach. Save 40 of them and lead the whole gang to the pool party.</p>
+      </div>
+      <div class="hud" aria-live="polite"><span><b id="g-count">0</b> / 40 friends</span><span id="g-time">0:00</span></div>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="g-bar"></i></div>
+    <div class="stage" id="stage">
+      <canvas id="game" width="720" height="540" role="img" aria-label="Game: a man in a blonde wig and white sunglasses rescues friends on Famara beach"></canvas>
+      <div class="overlay" id="g-start">
+        <strong>Rescate en Famara</strong>
+        <p>Move with the arrow keys or WASD. On a phone, hold your finger on the beach and he walks to it.</p>
+        <button class="btn" type="button" id="g-play">Start rescuing</button>
+      </div>
+    </div>
+    <ul class="legend">
+      <li style="--c:var(--sun)"><b>Buried in the sand</b>Stand next to them until they're dug out.</li>
+      <li style="--c:var(--sea)"><b>Shark on the beach</b>Grab your friend. If the shark bites you, 3 friends run off.</li>
+      <li style="--c:var(--rose)"><b>Too drunk</b>Catch them. They won't walk in a straight line.</li>
+      <li style="--c:var(--coral)"><b>Flying off on a kite</b>Reach their shadow before they float away.</li>
+    </ul>
+    <div class="end" id="g-end" hidden>
+      <strong>¡40 amigos rescatados!</strong>
+      <p id="g-end-txt"></p>
+      <div class="row-actions">
+        <button class="btn" type="button" id="g-again">Play again</button>
+        <button class="btn ghost" type="button" id="g-rsvp">Now RSVP for real</button>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="desk" aria-labelledby="desk-h">
+      <div id="desk-form">
+        <div style="display:grid;gap:6px;margin-bottom:18px">
+          <h2 id="desk-h">¿Vienes?</h2>
+          <p>Add your name, email and a photo so we know who's coming to Lanzarote.</p>
+        </div>
+        <form id="rsvp" novalidate>
+          <div class="field">
+            <label for="name">Your name</label>
+            <input type="text" id="name" maxlength="60" autocomplete="name" placeholder="Name and surname" required>
+          </div>
+          <div class="field">
+            <label for="email">Your email</label>
+            <input type="email" id="email" maxlength="254" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+            <small class="hint">Only used to send you weekend updates. It never appears on the guest list.</small>
+          </div>
+          <div class="field">
+            <label for="photo">Your photo</label>
+            <div class="photo-row">
+              <label class="photo-pick" id="pick">
+                <span class="plus" id="pick-empty">Add<br>photo</span>
+                <img id="pick-img" alt="" hidden>
+                <input type="file" id="photo" accept="image/*" aria-label="Choose a photo of yourself">
+              </label>
+              <small class="hint">A clear face shot works best. Wig optional, for now.</small>
+            </div>
+          </div>
+          <button class="btn" type="submit" id="submit" disabled>Loading…</button>
+          <p class="msg" id="msg" role="status"></p>
+        </form>
+      </div>
+      <div id="desk-pass" hidden>
+        <div style="display:grid;gap:6px;margin-bottom:18px">
+          <h2>¡Nos vemos!</h2>
+          <p>You're on the list. Pack the wig.</p>
+        </div>
+        <div class="pass">
+          <div class="top"><span>J40's</span><span>Lanzarote · 11–13 Dic</span></div>
+          <div class="body"><img id="t-img" alt=""><div><strong id="t-name"></strong><small id="t-no"></small></div></div>
+        </div>
+        <div class="row-actions" style="margin-top:16px">
+          <button class="btn ghost" type="button" id="edit">Change name or photo</button>
+          <button class="btn ghost" type="button" id="cancel">I can't make it</button>
+          <button class="btn danger" type="button" id="cancel-yes" hidden>Yes, remove me</button>
+          <button class="btn ghost" type="button" id="cancel-no" hidden>Keep me on</button>
+        </div>
+        <p class="msg" id="tmsg" role="status" style="margin-top:10px"></p>
+      </div>
+    </section>
+
+    <section class="house" aria-labelledby="house-h">
+      <div class="house-head">
+        <h2 id="house-h">Who's coming</h2>
+        <div class="count"><b id="count">0</b> confirmed</div>
+      </div>
+      <ul class="guests" id="guests"></ul>
+      <div class="empty" id="empty">No one has said yes yet. Be the first face on the wall.</div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Lanzarote · Viernes 11 – Domingo 13 de diciembre 2026</span>
+    <span>40 años · 3 días · 1 isla</span>
+  </footer>
+ </div>
+</div>
+
+<script src="game.js"></script>
+<script>
+(() => {
+  const CFG = { url: "https://emjykorcvgukiaxpyunn.supabase.co", key: "sb_publishable_NSJwJP-j-lXmj-bHx2yR4A_kPyQQnGV" };
+  const KEY = "j40-rsvp";
+  const $ = id => document.getElementById(id);
+  const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
+  const loadMe = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; } };
+  const saveMe = v => { try { v ? localStorage.setItem(KEY, JSON.stringify(v)) : localStorage.removeItem(KEY); } catch {} };
+  const state = { me: loadMe(), guests: [], mine: null, photo: null, editing: false, loaded: false };
+
+  async function rpc(fn, args) {
+    const r = await fetch(`${CFG.url}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: CFG.key, "Content-Type": "application/json" }, body: JSON.stringify(args || {}) });
+    const text = await r.text(); let data = null; try { data = text ? JSON.parse(text) : null; } catch {}
+    if (!r.ok) { const e = new Error("request failed"); e.reason = data && data.message; throw e; }
+    return data;
+  }
+  const setMsg = (el, t, err) => { el.textContent = t || ""; el.classList.toggle("err", !!err); };
+
+  function shrink(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        const s = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas"); c.width = c.height = 240;
+        const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, 240, 240);
+        g.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, 240, 240);
+        URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+      img.src = url;
+    });
+  }
+  $("photo").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try { state.photo = await shrink(f); $("pick-img").src = state.photo; $("pick-img").hidden = false; $("pick-empty").hidden = true; setMsg($("msg"), ""); }
+    catch { setMsg($("msg"), "That file couldn't be read as an image. Try a JPG or PNG.", true); }
+    updateSubmit();
+  });
+  $("name").addEventListener("input", updateSubmit);
+  $("email").addEventListener("input", updateSubmit);
+
+  function updateSubmit() {
+    const b = $("submit");
+    if (!state.loaded) { b.disabled = true; b.textContent = "Loading guest list…"; return; }
+    b.disabled = !$("name").value.trim() || !EMAIL_RE.test($("email").value.trim()) || !state.photo;
+    b.textContent = state.mine ? "Save changes" : "¡Sí, voy!";
+  }
+  const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+
+  function render() {
+    const g = state.guests;
+    $("count").textContent = g.length;
+    $("empty").hidden = g.length > 0;
+    const ul = $("guests"); ul.textContent = "";
+    g.forEach(d => {
+      const li = document.createElement("li");
+      if (state.me && d.id === state.me.id) li.className = "me";
+      if (typeof d.photo === "string" && d.photo.startsWith("data:image/")) { const im = document.createElement("img"); im.src = d.photo; im.alt = ""; im.loading = "lazy"; li.appendChild(im); }
+      else { const ph = document.createElement("div"); ph.className = "noimg"; ph.textContent = initials(String(d.name || "?")); li.appendChild(ph); }
+      const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = String(d.name || "Guest").slice(0, 60); li.appendChild(nm);
+      ul.appendChild(li);
+    });
+    const idx = state.me ? g.findIndex(d => d.id === state.me.id) : -1;
+    state.mine = idx >= 0 ? g[idx] : null;
+    const show = state.mine && !state.editing;
+    $("desk-pass").hidden = !show; $("desk-form").hidden = !!show;
+    if (state.mine) { $("t-name").textContent = state.mine.name; $("t-img").src = state.mine.photo || ""; $("t-no").textContent = `Guest no. ${idx + 1} to say yes`; }
+    updateSubmit();
+  }
+
+  async function refresh() {
+    try {
+      state.guests = (await rpc("j40_guest_list")) || []; state.loaded = true;
+      if (state.me && !state.guests.some(d => d.id === state.me.id)) { state.me = null; saveMe(null); state.editing = false; }
+      render();
+    } catch { if (!state.loaded) setMsg($("msg"), "The guest list didn't load. Check your connection and reload the page.", true); }
+  }
+
+  $("rsvp").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("name").value.trim().replace(/\s+/g, " "), email = $("email").value.trim().toLowerCase();
+    if (!name || !state.photo) { setMsg($("msg"), "Add your name and a photo to RSVP.", true); return; }
+    if (!EMAIL_RE.test(email)) { setMsg($("msg"), "Check your email address. It should look like name@example.com.", true); return; }
+    const b = $("submit"); b.disabled = true; b.textContent = "Saving…";
+    try {
+      if (state.mine) {
+        const ok = await rpc("j40_update_rsvp", { p_id: state.me.id, p_token: state.me.token, p_name: name, p_email: email, p_photo: state.photo });
+        if (!ok) { state.me = null; saveMe(null); } else { state.me = { ...state.me, email }; saveMe(state.me); }
+      } else {
+        const res = await rpc("j40_rsvp", { p_name: name, p_email: email, p_photo: state.photo });
+        state.me = { id: res.id, token: res.token, email }; saveMe(state.me);
+      }
+      state.editing = false; setMsg($("msg"), ""); await refresh();
+    } catch (err) {
+      setMsg($("msg"), err.reason === "duplicate" ? "That email has already RSVP'd. Each guest signs up with their own email." : "Your RSVP wasn't saved. Check your connection and try again.", true);
+      updateSubmit();
+    }
+  });
+
+  $("edit").onclick = () => {
+    state.editing = true; $("name").value = state.mine.name; $("email").value = state.me.email || ""; state.photo = state.mine.photo;
+    $("pick-img").src = state.photo; $("pick-img").hidden = !state.photo; $("pick-empty").hidden = !!state.photo;
+    render(); $("name").focus();
+  };
+  const toggleCancel = on => { $("cancel-yes").hidden = $("cancel-no").hidden = !on; $("cancel").hidden = $("edit").hidden = on; };
+  $("cancel").onclick = () => toggleCancel(true);
+  $("cancel-no").onclick = () => toggleCancel(false);
+  $("cancel-yes").onclick = async () => {
+    try {
+      await rpc("j40_cancel_rsvp", { p_id: state.me.id, p_token: state.me.token });
+      state.me = null; saveMe(null); toggleCancel(false); state.photo = null;
+      $("name").value = ""; $("email").value = ""; $("pick-img").hidden = true; $("pick-empty").hidden = false;
+      await refresh();
+    } catch { setMsg($("tmsg"), "That didn't go through. Try again.", true); }
+  };
+
+  render(); refresh();
+  setInterval(() => { if (!document.hidden) refresh(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+})();
+</script>
+</body>
+</html>
