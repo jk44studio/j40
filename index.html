@@ -49,6 +49,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; text-wrap: balance; }
 .game h2 { font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 1.05; letter-spacing: -.015em; }
 .game-head p { margin: 0; color: var(--ink-soft); }
 .hud { display: flex; gap: 18px; align-items: baseline; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.hud > span { white-space: nowrap; }
 .hud b { font-family: var(--display); font-weight: 800; font-size: 34px; color: var(--coral); }
 .bar { height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--sea), var(--sun), var(--coral)); transition: width .3s; }
@@ -64,6 +65,19 @@ h1, h2, h3 { margin: 0; font-weight: 400; text-wrap: balance; }
 .end { background: var(--card); border: 2px solid var(--ink); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
 .end strong { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.1; }
 .end p { margin: 0; color: var(--ink-soft); }
+.save { display: grid; gap: 6px; }
+.save label { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.save-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.save-row input { flex: 1 1 180px; min-width: 0; }
+.fame { display: grid; gap: 8px; }
+.fame h3 { font-family: var(--display); font-weight: 800; font-size: 22px; }
+.fame ol { margin: 0; padding: 0; list-style: none; counter-reset: f; display: grid; gap: 4px; max-width: 520px; }
+.fame li { counter-increment: f; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 6px 10px; border-radius: 4px; background: var(--card); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.fame li::before { content: counter(f); font-weight: 800; color: var(--coral); }
+.fame li:nth-child(-n+3)::before { color: var(--sun); }
+.fame .fn { overflow-wrap: anywhere; font-weight: 700; }
+.fame small { color: var(--ink-soft); }
+.fame b { font-family: var(--display); font-weight: 800; }
 
 /* Main */
 main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; padding: 12px clamp(12px, 3vw, 32px) 40px; align-items: start; }
@@ -148,9 +162,9 @@ footer { border-top: 1px solid var(--line); margin: 0 clamp(12px, 3vw, 32px); pa
     <div class="game-head">
       <div>
         <h2 id="game-h">Rescate en Famara</h2>
-        <p>Friends are in trouble all over Famara beach. Save 40 of them and lead the whole gang to the pool party.</p>
+        <p>Friends are in trouble all over Famara beach. Save 40 of them, keep hold of your 3 wigs, and get the whole gang to the pool party. Expect surprises.</p>
       </div>
-      <div class="hud" aria-live="polite"><span><b id="g-count">0</b> / 40 friends</span><span id="g-time">0:00</span></div>
+      <div class="hud"><span><b id="g-count">0</b> / 40</span><span><span id="g-score">0</span> pts</span><span id="g-time">0:00</span></div>
     </div>
     <div class="bar" aria-hidden="true"><i id="g-bar"></i></div>
     <div class="stage" id="stage">
@@ -163,17 +177,34 @@ footer { border-top: 1px solid var(--line); margin: 0 clamp(12px, 3vw, 32px); pa
     </div>
     <ul class="legend">
       <li style="--c:var(--sun)"><b>Buried in the sand</b>Stand next to them until they're dug out.</li>
-      <li style="--c:var(--sea)"><b>Shark on the beach</b>Grab your friend. If the shark bites you, 3 friends run off.</li>
+      <li style="--c:var(--sea)"><b>Shark on the beach</b>Grab your friend. A bite costs a wig and 3 friends.</li>
       <li style="--c:var(--rose)"><b>Too drunk</b>Catch them. They won't walk in a straight line.</li>
-      <li style="--c:var(--coral)"><b>Flying off on a kite</b>Reach their shadow before they float away.</li>
+      <li style="--c:var(--coral)"><b>Flying off on a kite</b>Reach their shadow. If they float away, you lose a wig.</li>
+      <li style="--c:var(--ink)"><b>Your own conga line</b>Walk into it and you trip, lose a wig and cut the line.</li>
+      <li style="--c:#7aa84f"><b>Washed up on the beach</b>Grab things for points and powers. Not all of them are a good idea.</li>
+      <li style="--c:var(--rose)"><b>Combos</b>Save friends less than 3 seconds apart to multiply your points, up to x5.</li>
+      <li style="--c:var(--sun)"><b>And more</b>The beach gets wilder the more friends you have. Nobody has seen 40 yet.</li>
     </ul>
     <div class="end" id="g-end" hidden>
-      <strong>¡40 amigos rescatados!</strong>
+      <strong id="g-end-h">¡40 amigos rescatados!</strong>
       <p id="g-end-txt"></p>
+      <form class="save" id="g-save" hidden>
+        <label for="g-name">Put your score in the Hall of Fame</label>
+        <div class="save-row">
+          <input type="text" id="g-name" maxlength="24" autocomplete="nickname" placeholder="Your name">
+          <button class="btn" type="submit" id="g-save-btn">Save score</button>
+        </div>
+        <p class="msg" id="g-save-msg" role="status"></p>
+      </form>
       <div class="row-actions">
         <button class="btn" type="button" id="g-again">Play again</button>
         <button class="btn ghost" type="button" id="g-rsvp">Now RSVP for real</button>
       </div>
+    </div>
+    <div class="fame" id="g-fame" hidden>
+      <h3>Hall of Fame</h3>
+      <ol id="g-board"></ol>
+      <p class="hint" id="g-fame-empty">No scores yet. Be the first name up here.</p>
     </div>
   </section>
 
@@ -336,6 +367,7 @@ footer { border-top: 1px solid var(--line); margin: 0 clamp(12px, 3vw, 32px); pa
       } else {
         const res = await rpc("j40_rsvp", { p_name: name, p_email: email, p_photo: state.photo });
         state.me = { id: res.id, token: res.token, email }; saveMe(state.me);
+        try { if (!localStorage.getItem("j40-player")) localStorage.setItem("j40-player", name.split(" ")[0]); } catch {}
       }
       state.editing = false; setMsg($("msg"), ""); await refresh();
     } catch (err) {
