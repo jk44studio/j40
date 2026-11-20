@@ -756,7 +756,7 @@
       const f = fx[i]; f.t += dt; if (f.t > 1.1) { fx.splice(i, 1); continue; }
       ctx.globalAlpha = 1 - f.t / 1.1;
       ctx.font = `800 ${f.txt.length > 5 ? 15 : 19}px ${FONT}`;
-      const fx0 = mode === "finale" ? f.x : clamp(W / 2 + (f.x - W / 2) * MX(), 60, W - 60);
+      const fx0 = mode === "finale" ? f.x : clamp(set ? W - f.x : f.x, 60, W - 60);
       ctx.lineWidth = 4; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.strokeText(f.txt, fx0, f.y - f.t * 30);
       ctx.fillStyle = f.col; ctx.fillText(f.txt, fx0, f.y - f.t * 30);
     }
@@ -885,7 +885,10 @@
     ctx.drawImage(bg, 0, 0, W, H);
     if (mode === "finale") { drawFinale(dt); drawFx(dt); drawHud(); return; }
     if (set) {
+      // drawn mirrored so the set is surfed in the same direction as the rest of the game (left to right)
+      ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
       drawSet(t); drawSetEnts(t); drawSetRiders(t); drawFalls(); drawSplash();
+      ctx.restore();
       if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash})`; ctx.fillRect(0, 0, W, H); }
       drawFx(dt); if (mode !== "title") drawHud(); if (banner) drawBanner();
       return;
