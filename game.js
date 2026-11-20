@@ -329,7 +329,7 @@
     sets++;
     set = { t: 13 + Math.min(4, sets) };
     ents = []; sents = []; shist = []; sd = 0; sy = 330; sv = 0; sgap = 1.3; sair = false; spin = 0; spinning = false; flash = 0.9; calima = 0;
-    say("¡SERIE!", "Hold to climb the wave, let go to drop. Ride through the gaps in the white water.", "set");
+    say("¡SERIE!", "Cruise it: hold to climb, let go to drop. Launch off the lip for the sparkles!", "set");
   }
   function endSet(bonus = true) {
     set = null; flash = 0.7; sents = [];
@@ -339,35 +339,34 @@
     py = surfY(PX); vy = 0; jumps = 0;
   }
   function spawnSet() {
-    const n = followers.length, r = Math.random();
-    const lastWall = sents.some(e => e.k === "wall" && e.x < 160);
-    if (r < 0.32 && !lastWall) {
-      const gh = Math.max(92, 140 - sets * 7 - n * 0.6);
-      sents.push({ k: "wall", x: -40, gy: R(FT + gh / 2 - 10, FB - gh / 2 + 10), gh, t: 0 });
-      sgap = R(1.0, 1.4);
-    } else if (r < 0.8) {
+    const r = Math.random();
+    if (r < 0.55) {
       const base = R(FT + 20, FB - 40), slope = R(-34, 34);
       for (let i = 0; i < 3; i++) sents.push({ k: "sf", x: -40 - i * 44, y: clamp(base + i * slope, FT + 10, FB), L: look(), t: R(0, 3) });
-      sgap = R(0.7, 1.0);
+      sgap = R(0.8, 1.1);
+    } else if (r < 0.88) {
+      // sparkles above the lip: only reachable by launching an air
+      for (let i = 0; i < 3; i++) sents.push({ k: "sp", x: -30 - i * 34, y: FT - 30 - Math.sin((i + 0.5) / 3 * Math.PI) * 26, t: R(0, 3) });
+      sgap = R(0.9, 1.2);
     } else {
-      sents.push({ k: "ball", x: -30, y: R(FT + 20, FB - 10), vy: R(-170, 170), t: 0 });
-      sgap = R(0.6, 0.9);
+      sents.push({ k: "ball", x: -30, y: R(FT + 40, FB - 20), vy: R(-90, 90), t: 0 });
+      sgap = R(0.9, 1.2);
     }
   }
   function updateSet(dt) {
     set.t -= dt;
     const k = (sy - FT) / (FB - FT);
-    sspd = (290 + k * 150 + followers.length * 2) * (longb > 0 ? 0.75 : 1);
+    sspd = (240 + k * 110 + followers.length * 1.2) * (longb > 0 ? 0.8 : 1);
     sd += sspd * dt; dist += speed * dt; score += sspd * dt / 10;
-    if (sair) { sv += 2300 * dt; spin += dt * 9; }
-    else { sv += (held ? -1500 : 1250) * dt; sv = clamp(sv, -400, 430); }
+    if (sair) { sv += 1500 * dt; spin += dt * 7; }
+    else { sv += (held ? -1050 : 900) * dt; sv = clamp(sv, -360, 360); }
     sy += sv * dt;
-    if (sy > FB) { if (sv > 260) { score += 50; pop(JX, FB - 70, "Bottom turn! +50", C.sea); burst(JX, FB, 8); } sy = FB; sv = -Math.abs(sv) * 0.3; }
+    if (sy > FB) { if (sv > 200) { score += 50; pop(JX, FB - 70, "Bottom turn! +50", C.sea); burst(JX, FB, 8); } sy = FB; sv = -Math.abs(sv) * 0.3; }
     if (!sair && sy < FT) {
-      if (sv < -300) { sair = true; sv = -430; spin = 0; score += 150; pop(JX, FT - 80, "Off the lip! +150", C.sun); burst(JX, FT, 12); }
+      if (sv < -200) { sair = true; sv = -380; spin = 0; score += 150; pop(JX, FT - 80, "Off the lip! +150", C.sun); burst(JX, FT, 12); }
       else { sy = FT; sv = Math.abs(sv) * 0.25; }
     }
-    if (sair && sy >= FT && sv > 0) { sair = false; spin = 0; sv = 220; burst(JX, FT, 6); }
+    if (sair && sy >= FT && sv > 0) { sair = false; const full = spin > Math.PI * 1.5; spin = 0; sv = 180; burst(JX, FT, 6); if (full) { score += 100; pop(JX, FT - 60, "Spin! +100", C.coral); } }
     shist.push({ d: sd, y: sy });
     while (shist.length > 2 && shist[1].d < sd - (GOAL + 2) * SSP) shist.shift();
     hist.push({ d: dist, h: 0 });
@@ -381,6 +380,8 @@
       if (e.dead) continue;
       if (e.k === "sf") {
         if (dist2(JX, cy, e.x, e.y - 14) < 30 || (magnet > 0 && Math.abs(e.x - JX) < 30)) { e.dead = true; addFriend(e.L, e.x, e.y - 14, 100); if (mode !== "play") return; }
+      } else if (e.k === "sp") {
+        if (dist2(JX, cy, e.x, e.y) < 30) { e.dead = true; score += 100 * (combo > 1 ? combo : 1); pop(e.x, e.y - 20, "+100", C.sun); burst(e.x, e.y, 6, "#ffe58a"); }
       } else if (e.k === "wall") {
         if (!e.hit && Math.abs(e.x - JX) < 18 && Math.abs(cy - e.gy) > e.gh / 2 - 6) {
           if (star > 0) { e.dead = true; score += 75; pop(JX, cy - 40, "SMASH +75", C.coral); burst(e.x, cy, 14); }
@@ -390,11 +391,7 @@
       } else if (e.k === "ball") {
         if (!e.hit && dist2(JX, cy, e.x, e.y - 10) < 26) {
           if (star > 0) { e.dead = true; burst(e.x, e.y, 10); }
-          else if (inv <= 0) { e.hit = true; hurt("Foam ball!"); if (mode !== "play") return; }
-        }
-        if (!e.ate && e.x > JX + 8) for (let i = 0; i < followers.length; i++) {
-          const x = fx_(i); if (x > W + 20) break;
-          if (Math.abs(x - e.x) < 10 && Math.abs(fy_(i) - 10 - e.y) < 22) { e.ate = true; if (star <= 0) wipe(i, x); break; }
+          else { e.hit = true; combo = 0; comboT = 0; sv += 160; pop(JX, cy - 40, "Splash!", C.sea); burst(e.x, e.y, 8); }
         }
       }
     }
@@ -855,6 +852,11 @@
         }
         ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]);
         line(e.x - 22, e.gy - e.gh / 2 + 4, e.x - 22, e.gy + e.gh / 2 - 4); ctx.setLineDash([]);
+      } else if (e.k === "sp") {
+        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.t * 2);
+        ctx.fillStyle = "#ffd34d"; ctx.beginPath();
+        for (let i = 0; i < 10; i++) { const r = i % 2 ? 5 : 12, a = i * Math.PI / 5; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+        ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
       } else if (e.k === "ball") {
         ctx.fillStyle = "rgba(255,255,255,.95)";
         for (let i = 0; i < 6; i++) { const a = e.t * 8 + i; circle(e.x + Math.cos(a) * 9, e.y - 10 + Math.sin(a) * 9, 9); }
