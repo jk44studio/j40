@@ -109,8 +109,8 @@
     else { hairCap(L); ctx.fillStyle = "#22201f"; circle(-2.5, -30.5, 1); circle(2.5, -30.5, 1); }
     ctx.restore();
   }
-  function surfboard(x, y, col, s = 1, rot = 0) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
+  function surfboard(x, y, col, s = 1, rot = 0, len = 1) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s * len, s);
     ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, 0, 17, 3.6, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = "rgba(23,80,63,.45)"; ctx.lineWidth = 1; ctx.stroke();
     ctx.strokeStyle = C.coral; ctx.lineWidth = 1.4; line(-14, 0, 14, 0);
@@ -180,11 +180,43 @@
     } else if (kind === "wig") curls(x, y + 30, 0.8);
   }
 
+  function qbox(x, y, open, t, bump) {
+    const b = bump > 0 ? Math.sin(bump / 0.25 * Math.PI) * 9 : 0;
+    y -= b;
+    ctx.fillStyle = open ? "#b88b5c" : C.sun; rrect(x - 14, y - 14, 28, 28, 4); ctx.fill();
+    ctx.strokeStyle = "#7a4b22"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = "#7a4b22"; [[-9, -9], [9, -9], [-9, 9], [9, 9]].forEach(([a, c]) => circle(x + a, y + c, 1.6));
+    if (!open) {
+      ctx.fillStyle = "#fff"; ctx.font = `800 19px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("?", x, y + 1 + Math.sin(t * 5) * 1.2);
+      ctx.strokeStyle = `rgba(255,255,255,${0.35 + Math.sin(t * 6) * 0.25})`; ctx.lineWidth = 2; rrect(x - 18, y - 18, 36, 36, 6); ctx.stroke();
+    }
+  }
+  function whitewater(x, y, w, t) {
+    ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.beginPath(); ctx.ellipse(x, y + 4, w / 2 + 6, 9, 0, 0, 7); ctx.fill();
+    const n = Math.max(4, Math.round(w / 12));
+    ctx.fillStyle = "rgba(255,255,255,.97)";
+    for (let i = 0; i <= n; i++) {
+      const xx = x - w / 2 + i * w / n, k = Math.sin(i / n * Math.PI);
+      circle(xx, y - 4 - k * 10 + Math.sin(t * 9 + i * 1.7) * 2.5, 6 + k * 5 + (i % 2) * 2);
+    }
+    ctx.fillStyle = "rgba(255,255,255,.7)";
+    for (let i = 0; i < 5; i++) circle(x - w / 3 + ((t * 60 + i * 37) % (w * 0.66)), y - 22 - ((t * 80 + i * 23) % 18), 2);
+  }
+  function medusa(x, y, t) {
+    ctx.strokeStyle = "rgba(214,104,160,.8)"; ctx.lineWidth = 2;
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(x + i * 4, y + 2); for (let k = 1; k <= 4; k++) ctx.lineTo(x + i * 4 + Math.sin(t * 6 + k + i) * 3, y + 2 + k * 6); ctx.stroke(); }
+    ctx.fillStyle = "rgba(240,140,190,.85)"; ctx.beginPath(); ctx.arc(x, y + 2, 13, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.ellipse(x - 4, y - 5, 4, 2.5, -0.5, 0, 7); ctx.fill();
+  }
+
   // ---------- State ----------
   let mode = "title", clock = 0, time, dist, speed, py, vy, held, holdT, jumps, spin, spinning, inv, lives, score, combo, comboT;
   let followers, hist, ents, fx, falls, gap, banner, star, magnet, mojito, calima, calimaT, arrive, actors, finT, confetti, seen, splash;
+  let longb = 0, set = null, setT = 0, sw = 1, flipA = 0, sets = 0;
 
-  const surfY = x => SURF + Math.sin((x + dist) * 0.018) * 5 + Math.sin(clock * 1.7 + x * 0.01) * 2.5;
+  const surfY = x => SURF + Math.sin((x + dist) * 0.018) * 5 * sw + Math.sin(clock * 1.7 + x * 0.01) * 2.5 * sw;
+  const MX = () => Math.cos(flipA); // 1 = normal, -1 = surfing the other way
   const airborne = () => py < surfY(PX) - 1;
 
   function reset() {
@@ -192,6 +224,7 @@
     lives = LIVES; score = 0; combo = 0; comboT = 0;
     followers = []; hist = []; ents = []; fx = []; falls = []; splash = []; gap = 300; banner = null;
     star = 0; magnet = 0; mojito = 0; calima = 0; calimaT = R(20, 28); arrive = 0; actors = null; finT = 0; confetti = []; seen = {};
+    longb = 0; set = null; setT = 26; sw = 1; flipA = 0; sets = 0;
     py = surfY(PX);
   }
 
@@ -227,7 +260,10 @@
 
   function pattern() {
     const n = followers.length, x = W + 40;
-    const P = [["float", 4], ["row", 3], ["arc", 3], ["rock", 3], ["flamingo", 2], ["item", 1]];
+    if (set) return setPattern(x, n);
+    const P = [["float", 4], ["row", 3], ["arc", 3], ["rock", 3], ["flamingo", 2], ["item", 1], ["box", 2]];
+    if (n >= 6) P.push(["boxRock", 2]);
+    if (n >= 18) P.push(["medusa", 3], ["medusaPair", Math.min(3, (n - 14) / 4)]);
     if (n >= 3) P.push(["shark", 3], ["kiteRock", 2]);
     if (n >= 8) P.push(["gullFloat", 3], ["sharkArc", 2]);
     if (n >= 16) P.push(["double", 2], ["shark", 2], ["gullShark", 2]);
@@ -252,19 +288,73 @@
       case "sharkArc": add({ k: "shark", x: x + 60, vx: 0 }); [70, 110, 70].forEach((h, i) => friend(x + 20 + i * 40, "air", { hy: h })); return 120;
       case "double": add({ k: "rock", x }); friend(x + 85, "air", { hy: 80 }); add({ k: "rock", x: x + 170 }); return 170;
       case "gullShark": add({ k: "shark", x, vx: sharkV }); add({ k: "gull", x: x + 140, hy: R(95, 120), vx: 100 }); return 150;
+      case "box": add({ k: "box", x, hy: R(128, 142) }); return 0;
+      case "boxRock": add({ k: "rock", x }); add({ k: "box", x: x + 4, hy: R(132, 145) }); return 10;
+      case "medusa": add({ k: "medusa", x, hy: R(45, 70) }); friend(x + 70, "float"); return 70;
+      case "medusaPair": add({ k: "medusa", x, hy: 50 }); add({ k: "medusa", x: x + 110, hy: 90, t: 1.4 }); return 110;
       case "sharkPack": add({ k: "shark", x, vx: sharkV }); add({ k: "shark", x: x + 120, vx: sharkV }); friend(x + 60, "air", { hy: 95 }); return 130;
     }
     return 0;
   }
 
+  function setPattern(x, n) {
+    const P = [["foam", 4], ["foamArc", 3], ["float", 2], ["box", 1], ["foamPair", n >= 15 ? 2 : 0.5]];
+    let r = Math.random() * P.reduce((a, p) => a + p[1], 0), name = P[0][0];
+    for (const [k, w] of P) { r -= w; if (r <= 0) { name = k; break; } }
+    const fv = 40 + n * 1.2;
+    switch (name) {
+      case "foam": add({ k: "foam", x, w: R(60, 100), vx: fv }); return 50;
+      case "foamArc": { const w = R(70, 100); add({ k: "foam", x: x + 50, w, vx: fv }); [70, 105, 70].forEach((h, i) => friend(x + 10 + i * 40, "air", { hy: h, vx: fv })); return 100; }
+      case "float": friend(x, "float"); friend(x + 40, "float"); return 40;
+      case "box": add({ k: "box", x, hy: R(128, 142) }); return 0;
+      case "foamPair": add({ k: "foam", x, w: 70, vx: fv }); add({ k: "foam", x: x + 190, w: 80, vx: fv }); return 190;
+    }
+    return 0;
+  }
+  function startSet() {
+    sets++;
+    set = { t: 13 + Math.min(5, sets) };
+    gap = Math.max(gap, speed * 1.3);
+    ents = ents.filter(e => e.x < PX + 40 || e.k === "float" || e.k === "air");
+    say("¡SERIE!", "A big set! Surf it the other way. Jump the white water.", "set");
+  }
+  function endSet() {
+    set = null; score += 500;
+    setT = Math.max(18, R(30, 42) - time * 0.04);
+    gap = Math.max(gap, speed * 1.1);
+    ents = ents.filter(e => e.k !== "foam");
+    say("Set survived! +500", "", null);
+  }
+  function openBox(e) {
+    e.open = true; e.bump = 0.25; score += 50; burst(e.x, e.y - 10, 12, "#ffe58a");
+    const opts = [["friends", 5], ["long", 3], ["star", 2], ["mojo", 2], ["mojito", 2], ["flock", 2]];
+    if (lives < LIVES) opts.push(["wig", 3]);
+    let r = Math.random() * opts.reduce((a, o) => a + o[1], 0), what = opts[0][0];
+    for (const [k, w] of opts) { r -= w; if (r <= 0) { what = k; break; } }
+    if (what === "friends") {
+      const k = 2 + (Math.random() < 0.4 ? 1 : 0);
+      for (let i = 0; i < k; i++) addFriend(look(), e.x, e.y - 20 - i * 18, 100);
+      pop(e.x, e.y - 70, `¡${k} amigos!`, C.coral);
+    } else if (what === "long") { longb = 9; say("¡Longboard!", "Cruising: slower, and friends score double.", "long"); }
+    else if (what === "flock") {
+      for (let i = 0; i < 3; i++) add({ k: "gull", x: W + 60 + i * 80, hy: R(85, 120), vx: 90 });
+      say("¡Gaviotas!", "A whole flock is coming. Stay low!", "flock");
+    } else useItem({ kind: what, x: e.x, cy: e.y - 20 });
+  }
+
   // ---------- Rules ----------
   function collect(e) {
     e.dead = true;
-    followers.push(e.L);
+    addFriend(e.L, e.x, e.cy, e.k === "kite" ? 250 : 100);
+  }
+  function addFriend(L, x, y, base) {
+    if (followers.length >= GOAL) return;
+    followers.push(L);
     combo = comboT > 0 ? Math.min(5, combo + 1) : 1; comboT = 2.4;
-    const pts = (e.k === "kite" ? 250 : 100) * combo; score += pts;
-    pop(e.x, e.cy - 30, `+${pts}`, C.coral);
-    if (combo > 1) pop(e.x, e.cy - 52, `x${combo}`, C.ink);
+    const mult = (set ? 2 : 1) * (longb > 0 ? 2 : 1);
+    const pts = base * combo * mult; score += pts;
+    pop(x, y - 30, `+${pts}`, C.coral);
+    if (combo > 1) pop(x, y - 52, `x${combo}`, C.ink);
     hud();
     if (followers.length >= GOAL && !arrive) { arrive = 2.6; say("¡40 amigos!", "Pool party ahead!", null); }
   }
@@ -294,7 +384,11 @@
 
   function update(dt) {
     time += dt;
-    speed = Math.min(560, 250 + time * 2.2 + followers.length * 3.5) * (star > 0 ? 1.25 : 1);
+    const target = Math.min(580, 250 + time * 2.4 + followers.length * 3.5) + (set ? 50 : 0);
+    speed = target * (star > 0 ? 1.25 : 1) * (longb > 0 ? 0.68 : 1);
+    longb = Math.max(0, longb - dt);
+    sw += ((set ? 2.3 : 1) - sw) * Math.min(1, dt * 1.5);
+    flipA += Math.sign((set ? Math.PI : 0) - flipA) * Math.min(Math.abs((set ? Math.PI : 0) - flipA), dt * Math.PI / 0.7);
     dist += speed * dt;
     score += speed * dt / 10;
     if (banner && (banner.t += dt) > 2.6) banner = null;
@@ -329,6 +423,9 @@
       else if (e.k === "rock") { e.y = SURF + 6; e.cy = SURF - 8; }
       else if (e.k === "shark") { e.y = sy; e.cy = sy - 12; }
       else if (e.k === "gull") { e.y = sy - e.hy; e.cy = e.y; }
+      else if (e.k === "box") { e.y = sy - e.hy; e.cy = e.y; if (e.bump > 0) e.bump -= dt; }
+      else if (e.k === "foam") { e.y = sy; e.cy = sy - 6; }
+      else if (e.k === "medusa") { e.y = sy - e.hy + Math.sin(e.t * 2.2) * 30; e.cy = e.y; }
       else if (e.k === "debris") { e.vy += GRAV * 0.6 * dt; e.y += e.vy * dt; e.rot += dt * 8; e.x += 220 * dt; e.cy = e.y; }
       if (e.dead || e.k === "debris") continue;
       const friendly = e.k === "float" || e.k === "air" || e.k === "kite" || e.k === "flamingo";
@@ -336,11 +433,34 @@
       const d = dist2(pc.x, pc.y, e.x, e.cy);
       if (friendly) { if (d < 26) collect(e); continue; }
       if (e.k === "item") { if (d < 24) useItem(e); continue; }
+      if (e.k === "box") {
+        if (!e.open && Math.abs(e.x - PX) < 24) {
+          const head = py - 60;
+          if (vy < 0 && head <= e.y + 15 && head >= e.y - 6) { openBox(e); vy = 160; holdT = 0; if (mode !== "play") return; }
+          else if (vy > 0 && py >= e.y - 16 && py <= e.y + 2) { vy = -JUMP * 0.95; jumps = 1; holdT = 0.12; pop(e.x, e.y - 40, "Boing!", C.sea); }
+        } else if (e.open && Math.abs(e.x - PX) < 22 && vy > 0 && py >= e.y - 16 && py <= e.y + 2) { vy = -JUMP * 0.8; jumps = 1; }
+        continue;
+      }
+      if (e.k === "foam") {
+        const span = e.w / 2 + 6, onWater = surfY(PX) - py < 10;
+        if (!e.hit && onWater && Math.abs(e.x - PX) < span && star <= 0 && inv <= 0) {
+          e.hit = true; say("White water!", "Jump the foam. It also catches friends behind you.", "foam");
+          hurt("Wiped!"); if (mode !== "play") return;
+        }
+        if (!e.passed && e.x + e.w / 2 < PX - 10) { e.passed = true; if (!e.hit) { score += 75; pop(PX, py - 76, "Clean! +75", C.sea); } }
+        if (!e.ate && e.x - e.w / 2 < PX - 8) {
+          for (let i = 0; i < followers.length; i++) {
+            const x = fx_(i); if (x < -10) break;
+            if (Math.abs(e.x - x) < e.w / 2 && surfY(x) - fy_(i) < 10) { e.ate = true; if (star <= 0) wipe(i, x); break; }
+          }
+        }
+        continue;
+      }
       // hazards
       const hr = e.k === "gull" ? 20 : 22;
       if (!e.hit && d < hr) {
         if (star > 0) { e.k = "debris"; e.vy = -420; e.rot = 0; score += 75; pop(e.x, e.cy - 30, "SMASH +75", C.coral); burst(e.x, e.cy, 10); continue; }
-        if (inv <= 0) { e.hit = true; hurt(e.k === "shark" ? "Shark!" : e.k === "gull" ? "Gaviota!" : "Rock!"); if (mode !== "play") return; continue; }
+        if (inv <= 0) { e.hit = true; hurt(e.k === "shark" ? "Shark!" : e.k === "gull" ? "Gaviota!" : e.k === "medusa" ? "Medusa!" : "Rock!"); if (mode !== "play") return; continue; }
       }
       if (!e.passed && e.x < PX - 14 && (e.k === "rock" || e.k === "shark")) {
         e.passed = true;
@@ -359,10 +479,14 @@
     }
     ents = ents.filter(e => !e.dead && e.x > -120 && e.y < H + 60);
 
-    if (!arrive) { gap -= speed * dt; if (gap <= 0) { const len = pattern(); gap = len + R(1, 1.7) * speed * 0.85; } }
+    if (!arrive) { gap -= speed * dt; if (gap <= 0) { const len = pattern(); gap = len + R(1, 1.6) * speed * Math.max(0.58, 0.88 - time * 0.0022); } }
+    if (!arrive) {
+      if (set) { if ((set.t -= dt) <= 0) endSet(); }
+      else if (followers.length >= 4 && (setT -= dt) <= 0) startSet();
+    } else if (set) endSet();
     else if ((arrive -= dt) <= 0) { startFinale(); return; }
 
-    if (!arrive && followers.length >= 12) {
+    if (!arrive && !set && followers.length >= 12) {
       if (calima > 0) calima -= dt;
       else if ((calimaT -= dt) <= 0) { calima = 6; calimaT = R(22, 32); say("¡Calima!", "Sahara dust. You can't see what's coming.", "calima"); }
     } else calima = Math.max(0, calima - dt);
@@ -381,7 +505,7 @@
   const POOL = { x: 150, y: 270, w: 340, h: 180 };
   let last = { score: 0, friends: 0, secs: 0, saved: false };
   function startFinale() {
-    mode = "finale"; finT = 0; held = false; banner = null; combo = 0; star = 0; magnet = 0; mojito = 0; calima = 0;
+    mode = "finale"; finT = 0; held = false; banner = null; combo = 0; star = 0; magnet = 0; mojito = 0; calima = 0; set = null; flipA = 0; sw = 1; longb = 0;
     $("stage").classList.remove("playing");
     const bonus = 5000 + Math.max(0, 240 - Math.floor(time)) * 20 + lives * 1000;
     score += bonus;
@@ -395,7 +519,7 @@
     hud(); $("g-score").textContent = num(score);
   }
   function gameOver() {
-    mode = "over"; held = false; star = 0; magnet = 0; mojito = 0; calima = 0;
+    mode = "over"; held = false; star = 0; magnet = 0; mojito = 0; calima = 0; longb = 0;
     $("stage").classList.remove("playing");
     banner = { txt: "Wiped out!", sub: "No wigs left", t: 0, hold: true };
     endCard("Out of wigs", `Jorge's party wave reached ${followers.length} of 40 friends.`, 900);
@@ -481,6 +605,7 @@
   }
   function drawCurl(t) {
     // the breaking lip of the wave chasing the party from the left
+    ctx.save(); ctx.translate(0, SURF); ctx.scale(1 + (sw - 1) * 0.35, 1 + (sw - 1) * 0.45); ctx.translate(0, -SURF);
     ctx.fillStyle = "#2f97ab";
     ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, SURF - 150);
     ctx.quadraticCurveTo(60, SURF - 175, 92, SURF - 120);
@@ -490,6 +615,7 @@
     for (let i = 0; i < 9; i++) { const a = i / 8; circle(4 + a * 86 + Math.sin(t * 5 + i) * 2, SURF - 150 - Math.sin(a * Math.PI) * 18 + (a > 0.8 ? (a - 0.8) * 120 : 0), 6 + (i % 3)); }
     ctx.fillStyle = "rgba(255,255,255,.5)";
     for (let i = 0; i < 6; i++) circle(30 + Math.sin(t * 3 + i * 2) * 20, SURF - 60 + i * 12, 4);
+    ctx.restore();
   }
 
   function drawEnt(e) {
@@ -505,6 +631,9 @@
     else if (e.k === "shark") fin(e.x, e.y, t);
     else if (e.k === "gull") gullSprite(e.x, e.y, t);
     else if (e.k === "item") pickup(e.kind, e.x, e.y, t);
+    else if (e.k === "box") qbox(e.x, e.y, e.open, t, e.bump || 0);
+    else if (e.k === "foam") whitewater(e.x, e.y, e.w, t);
+    else if (e.k === "medusa") medusa(e.x, e.y, t);
     else if (e.k === "debris") { ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot); ctx.fillStyle = "#4b3f45"; ctx.fillRect(-10, -10, 20, 20); ctx.restore(); }
   }
 
@@ -518,7 +647,7 @@
       ctx.fillStyle = gr; circle(PX, py - 24, 46);
     }
     ctx.save(); ctx.translate(PX, py); ctx.rotate(spin + (air ? -0.12 : Math.sin(t * 4) * 0.05) + sway);
-    surfboard(0, 0, star > 0 ? "#ffd34d" : ME.board, S);
+    surfboard(0, 0, star > 0 ? "#ffd34d" : longb > 0 ? "#ffb3c7" : ME.board, S, 0, longb > 0 ? 1.9 : 1);
     person(0, -4, ME, { s: S, wig: true, surf: !air, armsUp: air && !spinning, t });
     ctx.restore();
   }
@@ -542,8 +671,9 @@
       const f = fx[i]; f.t += dt; if (f.t > 1.1) { fx.splice(i, 1); continue; }
       ctx.globalAlpha = 1 - f.t / 1.1;
       ctx.font = `800 ${f.txt.length > 5 ? 15 : 19}px ${FONT}`;
-      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.strokeText(f.txt, f.x, f.y - f.t * 30);
-      ctx.fillStyle = f.col; ctx.fillText(f.txt, f.x, f.y - f.t * 30);
+      const fx0 = mode === "finale" ? f.x : clamp(W / 2 + (f.x - W / 2) * MX(), 60, W - 60);
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.strokeText(f.txt, fx0, f.y - f.t * 30);
+      ctx.fillStyle = f.col; ctx.fillText(f.txt, fx0, f.y - f.t * 30);
     }
     ctx.globalAlpha = 1;
   }
@@ -564,6 +694,8 @@
     if (star > 0) pills.push(["Party Wave", star, C.sun]);
     if (magnet > 0) pills.push(["Mojo", magnet, C.coral]);
     if (mojito > 0) pills.push(["Mojito", mojito, "#5f9e3c"]);
+    if (longb > 0) pills.push(["Longboard", longb, C.rose]);
+    if (set) pills.push(["Serie x2", set.t, C.sea]);
     pills.forEach(([txt, s, col], i) => {
       const x = 12 + i * 112, y = 70;
       ctx.fillStyle = col; rrect(x, y, 104, 20, 10); ctx.fill();
@@ -591,6 +723,8 @@
     ctx.drawImage(bg, 0, 0, W, H);
     if (mode === "finale") { drawFinale(dt); drawFx(dt); drawHud(); return; }
     ctx.save();
+    const mx = MX();
+    if (mx < 0.999) { ctx.translate(W / 2, 0); ctx.scale(Math.abs(mx) < 0.02 ? 0.02 * Math.sign(mx || 1) : mx, 1); ctx.translate(-W / 2, 0); }
     if (mojito > 0) { ctx.translate(W / 2, H / 2); ctx.rotate(Math.sin(t * 2.2) * 0.035); ctx.translate(-W / 2, -H / 2); }
     drawSea(t);
     ents.forEach(drawEnt);
@@ -599,9 +733,10 @@
     drawCurl(t);
     drawFalls();
     drawSplash();
-    drawFx(dt);
-    ctx.restore();
     if (calima > 0) drawCalima();
+    ctx.restore();
+    if (mx < 0.999 && mx > -0.999) { ctx.fillStyle = `rgba(255,255,255,${(1 - Math.abs(mx)) * 0.6})`; ctx.fillRect(0, 0, W, H); }
+    drawFx(dt);
     if (mode !== "title") drawHud();
     if (banner) drawBanner();
   }
@@ -633,6 +768,7 @@
       else if (e.k === "kite") e.y = sy - e.hy + Math.sin(e.t * 2) * 8;
       else if (e.k === "shark") e.y = sy;
       else if (e.k === "rock") e.y = SURF + 6;
+      else if (e.k === "box") e.y = sy - e.hy;
     }
     hist.length = 0; hist.push({ d: -1e9, h: 0 });
   }
@@ -640,7 +776,7 @@
     reset();
     for (let i = 0; i < 5; i++) followers.push(look());
     friend(330, "float"); add({ k: "shark", x: 420 }); friend(500, "kite", { hy: 160 }); add({ k: "rock", x: 560 }); friend(470, "air", { hy: 90 });
-    add({ k: "item", kind: "mojito", x: 600, hy: 110 });
+    add({ k: "box", x: 600, hy: 135 });
     placeDemo();
   }
 
