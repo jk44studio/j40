@@ -224,7 +224,7 @@
     lives = LIVES; score = 0; combo = 0; comboT = 0;
     followers = []; hist = []; ents = []; fx = []; falls = []; splash = []; gap = 300; banner = null;
     star = 0; magnet = 0; mojito = 0; calima = 0; calimaT = R(20, 28); arrive = 0; actors = null; finT = 0; confetti = []; seen = {};
-    longb = 0; set = null; setT = 26; sw = 1; flipA = 0; sets = 0;
+    longb = 0; set = null; setT = 26; sw = 1; flipA = 0; sets = 0; sents = []; shist = []; flash = 0;
     py = surfY(PX);
   }
 
@@ -237,8 +237,21 @@
     if (!b) return a.h;
     return a.h + (b.h - a.h) * ((d - a.d) / ((b.d - a.d) || 1));
   }
-  const fx_ = i => PX - (i + 1) * SPC;
-  const fy_ = i => surfY(fx_(i)) - heightAt(dist - (i + 1) * SPC);
+  const fx_ = i => set ? JX + (i + 1) * SSP : PX - (i + 1) * SPC;
+  const fy_ = i => set ? yAtS(sd - (i + 1) * SSP) : surfY(fx_(i)) - heightAt(dist - (i + 1) * SPC);
+  // ---- set-wave mode: Jorge rides across the face of a big wave, right to left ----
+  const JX = 400, FT = 150, FB = 410, SSP = 17;
+  let sy = 330, sv = 0, sd = 0, sspd = 300, shist = [], sents = [], sgap = 0, sair = false, flash = 0;
+  function yAtS(d) {
+    let lo = 0, hi = shist.length - 1;
+    if (hi < 0) return sy;
+    if (d <= shist[0].d) return shist[0].y;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (shist[m].d <= d) lo = m; else hi = m - 1; }
+    const a = shist[lo], b = shist[lo + 1];
+    if (!b) return a.y;
+    return a.y + (b.y - a.y) * ((d - a.d) / ((b.d - a.d) || 1));
+  }
+  const lipY = (x, t) => FT - 22 - (x / W) * 34 + Math.sin(x * 0.03 + t * 2) * 4 + Math.sin(x * 0.011 - t) * 5;
 
   function say(txt, sub, key) { banner = { txt, sub: key && seen[key] ? "" : sub, t: 0 }; if (key) seen[key] = true; }
   function pop(x, y, txt, col) { fx.push({ x: clamp(x, 70, W - 70), y, txt, col, t: 0 }); }
@@ -248,6 +261,7 @@
   function press() {
     if (mode !== "play") return;
     held = true;
+    if (set) return;
     const boost = mojito > 0 ? R(0.65, 1.3) : 1;
     if (!airborne()) { vy = -JUMP * boost; holdT = 0.2; jumps = 1; burst(PX - 6, surfY(PX), 6); }
     else if (jumps < 2) { vy = -JUMP2 * boost; holdT = 0.1; jumps = 2; spinning = true; spin = 0; }
@@ -313,17 +327,79 @@
   }
   function startSet() {
     sets++;
-    set = { t: 13 + Math.min(5, sets) };
-    gap = Math.max(gap, speed * 1.3);
-    ents = ents.filter(e => e.x < PX + 40 || e.k === "float" || e.k === "air");
-    say("¡SERIE!", "A big set! Surf it the other way. Jump the white water.", "set");
+    set = { t: 13 + Math.min(4, sets) };
+    ents = []; sents = []; shist = []; sd = 0; sy = 330; sv = 0; sgap = 1.3; sair = false; spin = 0; spinning = false; flash = 0.9; calima = 0;
+    say("¡SERIE!", "Hold to climb the wave, let go to drop. Ride through the gaps in the white water.", "set");
   }
-  function endSet() {
-    set = null; score += 500;
-    setT = Math.max(18, R(30, 42) - time * 0.04);
-    gap = Math.max(gap, speed * 1.1);
-    ents = ents.filter(e => e.k !== "foam");
-    say("Set survived! +500", "", null);
+  function endSet(bonus = true) {
+    set = null; flash = 0.7; sents = [];
+    if (bonus) { score += 500; say("Set survived! +500", "", null); }
+    setT = Math.max(20, R(32, 42) - time * 0.04);
+    gap = Math.max(gap, speed * 1.2);
+    py = surfY(PX); vy = 0; jumps = 0;
+  }
+  function spawnSet() {
+    const n = followers.length, r = Math.random();
+    const lastWall = sents.some(e => e.k === "wall" && e.x < 160);
+    if (r < 0.32 && !lastWall) {
+      const gh = Math.max(92, 140 - sets * 7 - n * 0.6);
+      sents.push({ k: "wall", x: -40, gy: R(FT + gh / 2 - 10, FB - gh / 2 + 10), gh, t: 0 });
+      sgap = R(1.0, 1.4);
+    } else if (r < 0.8) {
+      const base = R(FT + 20, FB - 40), slope = R(-34, 34);
+      for (let i = 0; i < 3; i++) sents.push({ k: "sf", x: -40 - i * 44, y: clamp(base + i * slope, FT + 10, FB), L: look(), t: R(0, 3) });
+      sgap = R(0.7, 1.0);
+    } else {
+      sents.push({ k: "ball", x: -30, y: R(FT + 20, FB - 10), vy: R(-170, 170), t: 0 });
+      sgap = R(0.6, 0.9);
+    }
+  }
+  function updateSet(dt) {
+    set.t -= dt;
+    const k = (sy - FT) / (FB - FT);
+    sspd = (290 + k * 150 + followers.length * 2) * (longb > 0 ? 0.75 : 1);
+    sd += sspd * dt; dist += speed * dt; score += sspd * dt / 10;
+    if (sair) { sv += 2300 * dt; spin += dt * 9; }
+    else { sv += (held ? -1500 : 1250) * dt; sv = clamp(sv, -400, 430); }
+    sy += sv * dt;
+    if (sy > FB) { if (sv > 260) { score += 50; pop(JX, FB - 70, "Bottom turn! +50", C.sea); burst(JX, FB, 8); } sy = FB; sv = -Math.abs(sv) * 0.3; }
+    if (!sair && sy < FT) {
+      if (sv < -300) { sair = true; sv = -430; spin = 0; score += 150; pop(JX, FT - 80, "Off the lip! +150", C.sun); burst(JX, FT, 12); }
+      else { sy = FT; sv = Math.abs(sv) * 0.25; }
+    }
+    if (sair && sy >= FT && sv > 0) { sair = false; spin = 0; sv = 220; burst(JX, FT, 6); }
+    shist.push({ d: sd, y: sy });
+    while (shist.length > 2 && shist[1].d < sd - (GOAL + 2) * SSP) shist.shift();
+    hist.push({ d: dist, h: 0 });
+    while (hist.length > 2 && hist[1].d < dist - (GOAL + 2) * SPC) hist.shift();
+
+    if (set.t > 1.6 && (sgap -= dt) <= 0) spawnSet();
+    const cy = sy - 22;
+    for (const e of sents) {
+      e.t += dt; e.x += sspd * dt;
+      if (e.k === "ball") { e.y += e.vy * dt; if (e.y < FT + 10 || e.y > FB) { e.vy *= -1; e.y = clamp(e.y, FT + 10, FB); } }
+      if (e.dead) continue;
+      if (e.k === "sf") {
+        if (dist2(JX, cy, e.x, e.y - 14) < 30 || (magnet > 0 && Math.abs(e.x - JX) < 30)) { e.dead = true; addFriend(e.L, e.x, e.y - 14, 100); if (mode !== "play") return; }
+      } else if (e.k === "wall") {
+        if (!e.hit && Math.abs(e.x - JX) < 18 && Math.abs(cy - e.gy) > e.gh / 2 - 6) {
+          if (star > 0) { e.dead = true; score += 75; pop(JX, cy - 40, "SMASH +75", C.coral); burst(e.x, cy, 14); }
+          else if (inv <= 0) { e.hit = true; say("White water!", "Steer for the gap: hold to go up, let go to go down.", "wall"); hurt("Wiped!"); if (mode !== "play") return; }
+        }
+        if (!e.passed && e.x > JX + 20) { e.passed = true; if (!e.hit) { score += 75; pop(JX, cy - 50, "Clean! +75", C.sea); } }
+      } else if (e.k === "ball") {
+        if (!e.hit && dist2(JX, cy, e.x, e.y - 10) < 26) {
+          if (star > 0) { e.dead = true; burst(e.x, e.y, 10); }
+          else if (inv <= 0) { e.hit = true; hurt("Foam ball!"); if (mode !== "play") return; }
+        }
+        if (!e.ate && e.x > JX + 8) for (let i = 0; i < followers.length; i++) {
+          const x = fx_(i); if (x > W + 20) break;
+          if (Math.abs(x - e.x) < 10 && Math.abs(fy_(i) - 10 - e.y) < 22) { e.ate = true; if (star <= 0) wipe(i, x); break; }
+        }
+      }
+    }
+    sents = sents.filter(e => !e.dead && e.x < W + 120);
+    if (arrive || set.t <= 0) endSet(!arrive);
   }
   function openBox(e) {
     e.open = true; e.bump = 0.25; score += 50; burst(e.x, e.y - 10, 12, "#ffe58a");
@@ -367,8 +443,9 @@
   }
   function hurt(msg) {
     lives--; inv = 1.6; combo = 0; comboT = 0;
-    burst(PX, py - 20, 12, "#fff");
-    pop(PX + 10, py - 70, msg, C.coral);
+    const hx = set ? JX : PX, hy = set ? sy : py;
+    burst(hx, hy - 20, 12, "#fff");
+    pop(hx + 10, hy - 70, msg, C.coral);
     wipe(Math.max(0, followers.length - 3), PX - 40);
     hud();
     if (lives <= 0) gameOver();
@@ -387,14 +464,22 @@
     const target = Math.min(580, 250 + time * 2.4 + followers.length * 3.5) + (set ? 50 : 0);
     speed = target * (star > 0 ? 1.25 : 1) * (longb > 0 ? 0.68 : 1);
     longb = Math.max(0, longb - dt);
-    sw += ((set ? 2.3 : 1) - sw) * Math.min(1, dt * 1.5);
-    flipA += Math.sign((set ? Math.PI : 0) - flipA) * Math.min(Math.abs((set ? Math.PI : 0) - flipA), dt * Math.PI / 0.7);
-    dist += speed * dt;
-    score += speed * dt / 10;
     if (banner && (banner.t += dt) > 2.6) banner = null;
+    if (flash > 0) flash -= dt;
     for (const k of ["inv", "star", "magnet", "mojito"]) { if (k === "inv") inv = Math.max(0, inv - dt); }
     star = Math.max(0, star - dt); magnet = Math.max(0, magnet - dt); mojito = Math.max(0, mojito - dt);
     if ((comboT -= dt) <= 0) combo = 0;
+    if (set) {
+      updateSet(dt);
+      if (mode !== "play") return;
+      for (let i = falls.length - 1; i >= 0; i--) { const f = falls[i]; f.t += dt; f.vy += GRAV * 0.7 * dt; f.x += (f.vx + sspd * 0.4) * dt; f.y += f.vy * dt; f.r += dt * 9; if (f.y > H + 40) falls.splice(i, 1); }
+      stepSplash(dt);
+      if (hudTick(dt)) $("g-time").textContent = fmt(time);
+      if (arrive && (arrive -= dt) <= 0) startFinale();
+      return;
+    }
+    dist += speed * dt;
+    score += speed * dt / 10;
 
     // Jorge's physics
     const g = held && holdT > 0 && vy < 0 ? GRAV * 0.42 : GRAV;
@@ -486,9 +571,9 @@
     } else if (set) endSet();
     else if ((arrive -= dt) <= 0) { startFinale(); return; }
 
-    if (!arrive && !set && followers.length >= 12) {
+    if (!arrive && !set && followers.length >= 18) {
       if (calima > 0) calima -= dt;
-      else if ((calimaT -= dt) <= 0) { calima = 6; calimaT = R(22, 32); say("¡Calima!", "Sahara dust. You can't see what's coming.", "calima"); }
+      else if ((calimaT -= dt) <= 0) { calima = 4.5; calimaT = R(32, 42); say("¡Calima!", "Sahara dust. Hard to see what's coming.", "calima"); }
     } else calima = Math.max(0, calima - dt);
 
     for (let i = falls.length - 1; i >= 0; i--) { const f = falls[i]; f.t += dt; f.vy += GRAV * 0.7 * dt; f.x += (f.vx - speed * 0.4) * dt; f.y += f.vy * dt; f.r += dt * 9; if (f.y > H + 40) falls.splice(i, 1); }
@@ -678,9 +763,9 @@
     ctx.globalAlpha = 1;
   }
   function drawCalima() {
-    const k = Math.min(1, calima / 0.8, (6 - calima) / 0.8);
-    const g = ctx.createLinearGradient(PX + 50, 0, PX + 230, 0);
-    g.addColorStop(0, "rgba(206,140,72,0)"); g.addColorStop(1, `rgba(206,140,72,${0.97 * k})`);
+    const k = Math.min(1, calima / 0.8, (4.5 - calima) / 0.8);
+    const g = ctx.createLinearGradient(PX + 130, 0, PX + 380, 0);
+    g.addColorStop(0, "rgba(206,140,72,0)"); g.addColorStop(1, `rgba(206,140,72,${0.82 * k})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
   function drawHud() {
@@ -718,10 +803,93 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawSet(t) {
+    // the face of a big set wave, seen side-on; Jorge travels right to left, the wave breaks behind him on the right
+    const gr = ctx.createLinearGradient(0, FT - 40, 0, FB + 30);
+    gr.addColorStop(0, "#9fe0d6"); gr.addColorStop(0.35, "#4fb3c4"); gr.addColorStop(1, "#1d6f86");
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 8) ctx.lineTo(x, lipY(x, t));
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    // shoulder on the left is gentler and lighter, the pocket on the right steeper and darker
+    const sh = ctx.createLinearGradient(0, 0, W, 0);
+    sh.addColorStop(0, "rgba(255,255,255,.10)"); sh.addColorStop(0.55, "rgba(10,60,80,0)"); sh.addColorStop(1, "rgba(10,50,70,.32)");
+    ctx.fillStyle = sh;
+    ctx.beginPath(); ctx.moveTo(0, FB + 17);
+    for (let x = 0; x <= W; x += 8) ctx.lineTo(x, lipY(x, t));
+    ctx.lineTo(W, FB + 17); ctx.closePath(); ctx.fill();
+    // curved contour lines down the face
+    ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1.5;
+    for (let k = 1; k <= 4; k++) { ctx.beginPath(); for (let x = 0; x <= W; x += 16) { const y = lipY(x, t) + k * k * 15 + (x / W) * k * 8; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+    // face texture streaming past
+    ctx.strokeStyle = "rgba(255,255,255,.22)"; ctx.lineWidth = 2;
+    for (let i = 0; i < 22; i++) {
+      const x = ((i * 97 + sd) % (W + 120)) - 60, y = FT + 10 + (i * 41) % (FB - FT);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 20, y + 4, x + 44, y + 2); ctx.stroke();
+    }
+    // the lip, feathering
+    ctx.fillStyle = "rgba(255,255,255,.95)";
+    for (let x = 0; x <= W; x += 14) circle(x, lipY(x, t) + 2, 5 + Math.sin(x * 0.2 + t * 6) * 2);
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    for (let i = 0; i < 18; i++) { const x = ((i * 53 + t * 90) % W), y = lipY(x, t) - 6 - ((t * 40 + i * 17) % 22); circle(x, y, 2); }
+    // the trough
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(0, FB + 14, W, 3);
+    ctx.fillStyle = "#1a6276"; ctx.fillRect(0, FB + 17, W, H - FB - 17);
+    // the breaking section chasing from the right
+    ctx.fillStyle = "#2a8ea4";
+    ctx.beginPath(); ctx.moveTo(W, FT - 80); ctx.quadraticCurveTo(W - 110, FT - 90, W - 120, FT - 20); ctx.quadraticCurveTo(W - 90, FT - 40, W - 70, FT - 10); ctx.lineTo(W, FT); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.95)";
+    for (let i = 0; i < 26; i++) { const a = i / 25; circle(W - 40 - Math.sin(t * 4 + i) * 18 - (i % 3) * 14, FT - 70 + a * (FB - FT + 110), 14 + (i % 4) * 4); }
+    for (let i = 0; i < 9; i++) circle(W - 118 + i * 12, FT - 84 + Math.sin(t * 6 + i) * 3, 6);
+  }
+  function drawSetEnts(t) {
+    for (const e of sents) {
+      if (e.k === "sf") {
+        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(-0.2);
+        surfboard(0, 0, C.sun, FS); person(0, -4, e.L, { s: FS, armsUp: true, t: e.t }); ctx.restore();
+      } else if (e.k === "wall") {
+        ctx.fillStyle = "rgba(255,255,255,.96)";
+        for (let y = FT - 30; y < FB + 24; y += 13) {
+          if (Math.abs(y - e.gy) < e.gh / 2 - 4) continue;
+          circle(e.x + Math.sin(e.t * 9 + y) * 4, y, 13 + Math.sin(y * 0.7 + e.t * 7) * 3);
+        }
+        ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]);
+        line(e.x - 22, e.gy - e.gh / 2 + 4, e.x - 22, e.gy + e.gh / 2 - 4); ctx.setLineDash([]);
+      } else if (e.k === "ball") {
+        ctx.fillStyle = "rgba(255,255,255,.95)";
+        for (let i = 0; i < 6; i++) { const a = e.t * 8 + i; circle(e.x + Math.cos(a) * 9, e.y - 10 + Math.sin(a) * 9, 9); }
+      }
+    }
+  }
+  function drawSetRiders(t) {
+    for (let i = followers.length - 1; i >= 0; i--) {
+      const x = fx_(i); if (x > W + 20) continue;
+      const y = fy_(i), y2 = yAtS(sd - (i + 1) * SSP - 6), ang = Math.atan2(y - y2, 6) * 0.9, L = followers[i];
+      ctx.save(); ctx.translate(x, y); ctx.scale(-1, 1); ctx.rotate(ang);
+      surfboard(0, 0, L.board, FS); person(0, -4, L, { s: FS, surf: true, armsUp: (i + Math.floor(t * 2)) % 6 === 0, t: t + i });
+      ctx.restore();
+    }
+    if (inv > 0 && mode === "play" && Math.floor(inv * 12) % 2) return;
+    if (star > 0) { const g = ctx.createRadialGradient(JX, sy - 24, 4, JX, sy - 24, 46); g.addColorStop(0, "rgba(255,230,120,.7)"); g.addColorStop(1, "rgba(255,230,120,0)"); ctx.fillStyle = g; circle(JX, sy - 24, 46); }
+    const ang = sair ? spin : Math.atan2(sv, sspd);
+    ctx.save(); ctx.translate(JX, sy); ctx.scale(-1, 1); ctx.rotate(ang);
+    surfboard(0, 0, star > 0 ? "#ffd34d" : longb > 0 ? "#ffb3c7" : ME.board, S, 0, longb > 0 ? 1.9 : 1);
+    person(0, -4, ME, { s: S, wig: true, surf: !sair, armsUp: sair, t });
+    ctx.restore();
+    // spray off the rail when carving
+    if (!sair && Math.abs(sv) > 250 && Math.random() < 0.6) splash.push({ x: JX + 18, y: sy, vx: R(40, 140), vy: R(-200, -60), t: 0, c: "#fff" });
+  }
+
   function draw(dt, t) {
     if (!bg) bg = makeBg();
     ctx.drawImage(bg, 0, 0, W, H);
     if (mode === "finale") { drawFinale(dt); drawFx(dt); drawHud(); return; }
+    if (set) {
+      drawSet(t); drawSetEnts(t); drawSetRiders(t); drawFalls(); drawSplash();
+      if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash})`; ctx.fillRect(0, 0, W, H); }
+      drawFx(dt); if (mode !== "title") drawHud(); if (banner) drawBanner();
+      return;
+    }
     ctx.save();
     const mx = MX();
     if (mx < 0.999) { ctx.translate(W / 2, 0); ctx.scale(Math.abs(mx) < 0.02 ? 0.02 * Math.sign(mx || 1) : mx, 1); ctx.translate(-W / 2, 0); }
@@ -735,7 +903,7 @@
     drawSplash();
     if (calima > 0) drawCalima();
     ctx.restore();
-    if (mx < 0.999 && mx > -0.999) { ctx.fillStyle = `rgba(255,255,255,${(1 - Math.abs(mx)) * 0.6})`; ctx.fillRect(0, 0, W, H); }
+    if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash})`; ctx.fillRect(0, 0, W, H); }
     drawFx(dt);
     if (mode !== "title") drawHud();
     if (banner) drawBanner();
